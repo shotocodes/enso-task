@@ -25,6 +25,7 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
   const [showAdd, setShowAdd] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [focusTask, setFocusTask] = useState<Task | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [collapsedGoals, setCollapsedGoals] = useState<Set<string>>(new Set());
 
@@ -130,7 +131,7 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
     <div className="space-y-2">
       {list.map((task, idx) => (
         <TaskCard key={task.id} task={task} locale={locale}
-          onToggle={handleToggle} onEdit={setEditTask} onDelete={setDeleteId}
+          onToggle={handleToggle} onEdit={setEditTask} onDelete={setDeleteId} onFocus={setFocusTask}
           onMoveUp={idx > 0 ? () => handleMoveUp(task.id, list) : undefined}
           onMoveDown={idx < list.length - 1 ? () => handleMoveDown(task.id, list) : undefined} />
       ))}
@@ -229,17 +230,33 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
           </div>
         </div>
       )}
+
+      {/* FOCUS集中ポップアップ */}
+      {focusTask && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-fade-in" onClick={() => setFocusTask(null)}>
+          <div className="w-full max-w-sm bg-modal rounded-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-center">{tFormat("tasks.focusPrompt", locale, focusTask.title)}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setFocusTask(null)} className="flex-1 py-2.5 rounded-xl text-sm bg-subtle text-muted hover:opacity-80">{t("tasks.close", locale)}</button>
+              <a href={`https://ensolife.app/focus?taskId=${focusTask.id}`}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors text-center">
+                {t("tasks.openFocus", locale)}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ===== タスクカード =====
 function TaskCard({
-  task, locale, onToggle, onEdit, onDelete, onMoveUp, onMoveDown,
+  task, locale, onToggle, onEdit, onDelete, onFocus, onMoveUp, onMoveDown,
 }: {
   task: Task; locale: Locale;
   onToggle: (id: string) => void; onEdit: (task: Task) => void; onDelete: (id: string) => void;
-  onMoveUp?: () => void; onMoveDown?: () => void;
+  onFocus?: (task: Task) => void; onMoveUp?: () => void; onMoveDown?: () => void;
 }) {
   return (
     <div className={`bg-card border border-card rounded-xl p-3 flex items-center gap-2 ${task.completed ? "opacity-50" : ""}`}>
@@ -254,8 +271,8 @@ function TaskCard({
       <button onClick={() => onToggle(task.id)} className="shrink-0 transition-colors">
         {task.completed ? <CheckCircleIcon size={22} className="text-emerald-500" /> : <CircleIcon size={22} className="text-muted hover:text-emerald-500" />}
       </button>
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm ${task.completed ? "line-through text-muted" : ""}`}>{task.title}</p>
+      <div className="flex-1 min-w-0" onClick={() => !task.completed && onFocus?.(task)} role={!task.completed && onFocus ? "button" : undefined}>
+        <p className={`text-sm ${task.completed ? "line-through text-muted" : "cursor-pointer hover:text-emerald-500 transition-colors"}`}>{task.title}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className={`text-[10px] font-medium ${PRIORITY_COLORS[task.priority]}`}>{t(`task.priority.${task.priority}`, locale)}</span>
           {task.dueDate && <span className="text-[10px] text-muted tabular-nums">{task.dueDate.slice(5)}</span>}

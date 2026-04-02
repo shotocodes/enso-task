@@ -108,6 +108,10 @@ const translations: Translations = {
   "goals.aiError":           { ja: "生成に失敗しました", en: "Generation failed", zh: "生成失败", ko: "생성 실패" },
   "goals.aiConfirm":         { ja: "この内容で追加しますか？", en: "Add these items?", zh: "添加这些内容？", ko: "이 내용을 추가하시겠습니까?" },
   "goals.aiAdd":             { ja: "追加する", en: "Add All", zh: "全部添加", ko: "모두 추가" },
+  "goals.openTimer":         { ja: "ENSO TIMERを開く →", en: "Open ENSO TIMER →", zh: "打开ENSO TIMER →", ko: "ENSO TIMER 열기 →" },
+  "tasks.focusPrompt":       { ja: "「{0}」に集中する？", en: "Focus on \"{0}\"?", zh: "集中于「{0}」？", ko: "\"{0}\"에 집중하시겠습니까?" },
+  "tasks.openFocus":         { ja: "ENSO FOCUSで集中 →", en: "Focus with ENSO FOCUS →", zh: "用ENSO FOCUS集中 →", ko: "ENSO FOCUS로 집중 →" },
+  "tasks.close":             { ja: "閉じる", en: "Close", zh: "关闭", ko: "닫기" },
 
   // Modal
   "modal.confirm": { ja: "確認", en: "Confirm", zh: "确认", ko: "확인" },

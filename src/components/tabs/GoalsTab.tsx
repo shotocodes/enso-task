@@ -151,10 +151,13 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
       <h2 className="text-lg font-bold">{t("goals.title", locale)}</h2>
 
       {goals.length === 0 ? (
-        <div className="border-2 border-dashed border-card rounded-2xl p-8 text-center">
+        <div className="border-2 border-dashed border-card rounded-2xl p-8 text-center space-y-3">
           <TargetIcon size={28} className="mx-auto text-muted opacity-40 mb-2" />
           <p className="text-sm text-muted">{t("goals.noGoals", locale)}</p>
-          <p className="text-xs text-muted mt-1 opacity-50">{t("goals.noGoalsHint", locale)}</p>
+          <p className="text-xs text-muted opacity-50">{t("goals.noGoalsHint", locale)}</p>
+          <a href="https://ensolife.app/timer" className="inline-block mt-2 px-4 py-2 rounded-xl text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors">
+            {t("goals.openTimer", locale)}
+          </a>
         </div>
       ) : (
         <div className="space-y-4">
