@@ -57,12 +57,16 @@ interface JournalEntry {
 
 const JOURNAL_KEY = "enso-journal-entries";
 
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /** タスク完了をJOURNALに記録する */
 export function recordTaskToJournal(taskTitle: string): void {
   if (typeof window === "undefined") return;
   try {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = toLocalDateStr(now);
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
     const raw = localStorage.getItem(JOURNAL_KEY);
