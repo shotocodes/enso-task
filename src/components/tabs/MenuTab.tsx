@@ -24,13 +24,13 @@ export default function MenuTab({ locale }: { locale: Locale }) {
             { name: t("menu.ensoFocus", locale), desc: t("menu.ensoFocusDesc", locale), href: "https://ensolife.app/focus", logo: <><circle cx="50" cy="50" r="32" stroke="currentColor" strokeWidth="5" fill="none" opacity="0.9" /><circle cx="50" cy="50" r="5" fill="currentColor" /></> },
             { name: t("menu.ensoJournal", locale), desc: t("menu.ensoJournalDesc", locale), href: "https://ensolife.app/journal", logo: <><circle cx="50" cy="50" r="32" stroke="currentColor" strokeWidth="5" fill="none" opacity="0.9" /><line x1="38" y1="42" x2="62" y2="42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" /><line x1="38" y1="50" x2="62" y2="50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.65" /><line x1="38" y1="58" x2="62" y2="58" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="1" /></> },
           ].map((app) => (
-            <a key={app.name} href={app.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 -mx-1 rounded-xl hover:bg-subtle transition-colors">
+            <a key={app.name} href={app.href} className="flex items-center gap-3 p-3 -mx-1 rounded-xl hover:bg-subtle transition-colors">
               <svg width={36} height={36} viewBox="0 0 100 100" fill="none" className="text-emerald-500 shrink-0">{app.logo}</svg>
               <div className="min-w-0 flex-1">
                 <span className="text-sm font-medium block">{app.name}</span>
                 <span className="text-xs text-muted block">{app.desc}</span>
               </div>
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="text-muted shrink-0"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" /></svg>
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="text-muted shrink-0"><polyline points="9 18 15 12 9 6" /></svg>
             </a>
           ))}
 
