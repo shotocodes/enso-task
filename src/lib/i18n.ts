@@ -88,6 +88,15 @@ const translations: Translations = {
   "menu.credits":          { ja: "Credits", en: "Credits", zh: "Credits", ko: "Credits" },
   "menu.version":          { ja: "Version", en: "Version", zh: "Version", ko: "Version" },
 
+  // Task Grouping
+  "tasks.uncategorized":     { ja: "未分類", en: "Uncategorized", zh: "未分类", ko: "미분류" },
+  "tasks.noMilestone":       { ja: "マイルストーンなし", en: "No Milestone", zh: "无里程碑", ko: "마일스톤 없음" },
+  "task.goal":               { ja: "目標", en: "Goal", zh: "目标", ko: "목표" },
+  "task.goal.none":          { ja: "なし", en: "None", zh: "无", ko: "없음" },
+  "task.milestone":          { ja: "マイルストーン", en: "Milestone", zh: "里程碑", ko: "마일스톤" },
+  "task.milestone.none":     { ja: "なし", en: "None", zh: "无", ko: "없음" },
+  "goals.addTask":           { ja: "+ タスク", en: "+ Task", zh: "+ 任务", ko: "+ 작업" },
+
   // Modal
   "modal.confirm": { ja: "確認", en: "Confirm", zh: "确认", ko: "확인" },
   "modal.cancel":  { ja: "キャンセル", en: "Cancel", zh: "取消", ko: "취소" },

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { type Locale, t } from "@/lib/i18n";
 import { storage, STORAGE_KEYS } from "@/lib/storage";
-import type { Task, Milestone, ThemeMode } from "@/types";
+import type { Task, Milestone, Goal, ThemeMode } from "@/types";
 
 import BottomTabBar, { type TabId } from "@/components/BottomTabBar";
 import TasksTab from "@/components/tabs/TasksTab";
@@ -19,12 +19,22 @@ function applyTheme(theme: ThemeMode) {
   document.documentElement.setAttribute("data-theme", resolved);
 }
 
+function loadGoals(): Goal[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("enso-goals");
+    if (!raw) return [];
+    return JSON.parse(raw) as Goal[];
+  } catch { return []; }
+}
+
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>("tasks");
   const [locale, setLocale] = useState<Locale>("ja");
   const [theme, setTheme] = useState<ThemeMode>("dark");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
   useEffect(() => {
     const savedLocale = storage.get<Locale>(STORAGE_KEYS.LOCALE);
@@ -35,7 +45,13 @@ export default function Page() {
     if (savedTheme) setTheme(savedTheme);
     if (savedTasks) setTasks(savedTasks);
     if (savedMilestones) setMilestones(savedMilestones);
+    setGoals(loadGoals());
   }, []);
+
+  // タブ切替時にGoalsをリフレッシュ
+  useEffect(() => {
+    setGoals(loadGoals());
+  }, [activeTab]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -62,6 +78,14 @@ export default function Page() {
     storage.set(STORAGE_KEYS.TASKS, next);
   }, []);
 
+  const handleTaskAdd = useCallback((task: Task) => {
+    setTasks((prev) => {
+      const next = [task, ...prev];
+      storage.set(STORAGE_KEYS.TASKS, next);
+      return next;
+    });
+  }, []);
+
   const handleMilestonesChange = useCallback((next: Milestone[]) => {
     setMilestones(next);
     storage.set(STORAGE_KEYS.MILESTONES, next);
@@ -81,10 +105,11 @@ export default function Page() {
 
       <div key={`${activeTab}-${locale}`}>
         {activeTab === "tasks" && (
-          <TasksTab locale={locale} tasks={tasks} onTasksChange={handleTasksChange} />
+          <TasksTab locale={locale} tasks={tasks} milestones={milestones} goals={goals} onTasksChange={handleTasksChange} />
         )}
         {activeTab === "goals" && (
-          <GoalsTab locale={locale} milestones={milestones} onMilestonesChange={handleMilestonesChange} />
+          <GoalsTab locale={locale} milestones={milestones} onMilestonesChange={handleMilestonesChange}
+            tasks={tasks} onTaskAdd={handleTaskAdd} />
         )}
         {activeTab === "settings" && (
           <SettingsTab locale={locale} onLocaleChange={handleLocaleChange} theme={theme} onThemeChange={handleThemeChange} onClearData={handleClearData} />
