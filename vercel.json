@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "https://ensolife.app/task",
+      "permanent": true
+    },
+    {
+      "source": "/:path((?!task).*)",
+      "destination": "https://ensolife.app/task",
+      "permanent": true
+    }
+  ]
+}
