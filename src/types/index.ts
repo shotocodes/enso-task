@@ -16,6 +16,7 @@ export interface Task {
   milestoneId?: string;
   completed: boolean;
   completedAt?: string;     // ISO 8601
+  order: number;            // 手動並び順（小さい方が上）
   createdAt: string;
   updatedAt: string;
 }

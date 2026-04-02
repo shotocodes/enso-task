@@ -24,10 +24,8 @@ export default function TasksTab({ locale, tasks, onTasksChange }: TasksTabProps
   const [showCompleted, setShowCompleted] = useState(false);
 
   const todayStr = getTodayStr();
-  const activeTasks = tasks.filter((t) => !t.completed);
+  const activeTasks = tasks.filter((t) => !t.completed).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const completedTasks = tasks.filter((t) => t.completed);
-  const todayTasks = activeTasks.filter((t) => !t.dueDate || t.dueDate <= todayStr);
-  const futureTasks = activeTasks.filter((t) => t.dueDate && t.dueDate > todayStr);
   const completedCount = completedTasks.length;
   const totalCount = tasks.length;
 
@@ -49,7 +47,9 @@ export default function TasksTab({ locale, tasks, onTasksChange }: TasksTabProps
   };
 
   const handleAdd = (task: Task) => {
-    onTasksChange([task, ...tasks]);
+    // 新しいタスクはactiveTasks の末尾に追加
+    const maxOrder = Math.max(0, ...activeTasks.map((t) => t.order ?? 0));
+    onTasksChange([{ ...task, order: maxOrder + 1 }, ...tasks]);
     setShowAdd(false);
   };
 
@@ -58,14 +58,36 @@ export default function TasksTab({ locale, tasks, onTasksChange }: TasksTabProps
     setEditTask(null);
   };
 
+  const handleMoveUp = (id: string) => {
+    const idx = activeTasks.findIndex((t) => t.id === id);
+    if (idx <= 0) return;
+    // 上のタスクとorderを入れ替え
+    const above = activeTasks[idx - 1];
+    const current = activeTasks[idx];
+    const next = tasks.map((t) => {
+      if (t.id === current.id) return { ...t, order: above.order ?? 0 };
+      if (t.id === above.id) return { ...t, order: current.order ?? 0 };
+      return t;
+    });
+    onTasksChange(next);
+  };
+
+  const handleMoveDown = (id: string) => {
+    const idx = activeTasks.findIndex((t) => t.id === id);
+    if (idx < 0 || idx >= activeTasks.length - 1) return;
+    const below = activeTasks[idx + 1];
+    const current = activeTasks[idx];
+    const next = tasks.map((t) => {
+      if (t.id === current.id) return { ...t, order: below.order ?? 0 };
+      if (t.id === below.id) return { ...t, order: current.order ?? 0 };
+      return t;
+    });
+    onTasksChange(next);
+  };
+
   const handleDelete = (id: string) => {
     onTasksChange(tasks.filter((t) => t.id !== id));
     setDeleteId(null);
-  };
-
-  const sortByPriority = (a: Task, b: Task) => {
-    const order: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
-    return order[a.priority] - order[b.priority];
   };
 
   return (
@@ -94,32 +116,28 @@ export default function TasksTab({ locale, tasks, onTasksChange }: TasksTabProps
         </div>
       )}
 
-      {/* 今日のタスク */}
-      {todayTasks.length > 0 && (
-        <div>
-          <h3 className="text-sm font-bold mb-3">{t("tasks.today", locale)}</h3>
-          <div className="space-y-2">
-            {todayTasks.sort(sortByPriority).map((task) => (
-              <TaskCard key={task.id} task={task} locale={locale} onToggle={handleToggle} onEdit={setEditTask} onDelete={setDeleteId} />
-            ))}
-          </div>
+      {/* タスク一覧（order順） */}
+      {activeTasks.length > 0 ? (
+        <div className="space-y-2">
+          {activeTasks.map((task, idx) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              locale={locale}
+              onToggle={handleToggle}
+              onEdit={setEditTask}
+              onDelete={setDeleteId}
+              onMoveUp={idx > 0 ? () => handleMoveUp(task.id) : undefined}
+              onMoveDown={idx < activeTasks.length - 1 ? () => handleMoveDown(task.id) : undefined}
+            />
+          ))}
+          {activeTasks.length > 5 && (
+            <p className="text-center text-[10px] text-muted opacity-40">
+              TOP 5 → ENSO FOCUS
+            </p>
+          )}
         </div>
-      )}
-
-      {/* 予定タスク */}
-      {futureTasks.length > 0 && (
-        <div>
-          <h3 className="text-sm font-bold mb-3">{t("tasks.all", locale)}</h3>
-          <div className="space-y-2">
-            {futureTasks.sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")).map((task) => (
-              <TaskCard key={task.id} task={task} locale={locale} onToggle={handleToggle} onEdit={setEditTask} onDelete={setDeleteId} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 空状態 */}
-      {activeTasks.length === 0 && completedTasks.length === 0 && (
+      ) : completedTasks.length === 0 && (
         <div className="border-2 border-dashed border-card rounded-2xl p-8 text-center">
           <ChecklistIcon size={28} className="mx-auto text-muted opacity-40 mb-2" />
           <p className="text-sm text-muted">{t("tasks.empty", locale)}</p>
@@ -168,16 +186,38 @@ export default function TasksTab({ locale, tasks, onTasksChange }: TasksTabProps
 
 // ===== タスクカード =====
 function TaskCard({
-  task, locale, onToggle, onEdit, onDelete,
+  task, locale, onToggle, onEdit, onDelete, onMoveUp, onMoveDown,
 }: {
   task: Task;
   locale: Locale;
   onToggle: (id: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   return (
-    <div className={`bg-card border border-card rounded-xl p-3 flex items-center gap-3 ${task.completed ? "opacity-50" : ""}`}>
+    <div className={`bg-card border border-card rounded-xl p-3 flex items-center gap-2 ${task.completed ? "opacity-50" : ""}`}>
+      {/* 上下矢印（未完了時のみ） */}
+      {!task.completed && (
+        <div className="flex flex-col shrink-0">
+          <button
+            onClick={onMoveUp}
+            disabled={!onMoveUp}
+            className={`text-[10px] leading-none p-0.5 ${onMoveUp ? "text-muted hover:text-emerald-500" : "text-transparent"} transition-colors`}
+          >
+            ▲
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={!onMoveDown}
+            className={`text-[10px] leading-none p-0.5 ${onMoveDown ? "text-muted hover:text-emerald-500" : "text-transparent"} transition-colors`}
+          >
+            ▼
+          </button>
+        </div>
+      )}
+
       <button onClick={() => onToggle(task.id)} className="shrink-0 transition-colors">
         {task.completed ? (
           <CheckCircleIcon size={22} className="text-emerald-500" />
@@ -238,6 +278,7 @@ function TaskModal({
       dueDate: dueDate || undefined,
       completed: initial?.completed ?? false,
       completedAt: initial?.completedAt,
+      order: initial?.order ?? Date.now(),
       createdAt: initial?.createdAt ?? now,
       updatedAt: now,
     });
