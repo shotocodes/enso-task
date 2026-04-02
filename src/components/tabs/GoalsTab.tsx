@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { type Locale, t, tFormat } from "@/lib/i18n";
 import type { Goal, Milestone, Task, Priority } from "@/types";
-import { TargetIcon, CheckCircleIcon, CircleIcon, PlusIcon } from "@/components/Icons";
+import { TargetIcon, CheckCircleIcon, CircleIcon } from "@/components/Icons";
 
 interface GoalsTabProps {
   locale: Locale;
@@ -11,9 +11,10 @@ interface GoalsTabProps {
   onMilestonesChange: (milestones: Milestone[]) => void;
   tasks: Task[];
   onTaskAdd: (task: Task) => void;
+  onTasksChange: (tasks: Task[]) => void;
 }
 
-export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks, onTaskAdd }: GoalsTabProps) {
+export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks, onTaskAdd, onTasksChange }: GoalsTabProps) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [addingMilestoneGoalId, setAddingMilestoneGoalId] = useState<string | null>(null);
@@ -69,12 +70,29 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
       priority: "medium" as Priority,
       goalId,
       milestoneId,
+      active: false, // 目標タブで作成 = 非アクティブ
       completed: false,
       order: maxOrder + 1,
       createdAt: now,
       updatedAt: now,
     });
     setAddingTaskFor(null);
+  };
+
+  // タスクをタスクタブに移行（active: true に変更）
+  const handleMoveToTasks = (taskIds: string[]) => {
+    const next = tasks.map((t) =>
+      taskIds.includes(t.id) ? { ...t, active: true, updatedAt: new Date().toISOString() } : t
+    );
+    onTasksChange(next);
+  };
+
+  // タスクをタスクタブから戻す（active: false に変更）
+  const handleRemoveFromTasks = (taskId: string) => {
+    const next = tasks.map((t) =>
+      t.id === taskId ? { ...t, active: false, updatedAt: new Date().toISOString() } : t
+    );
+    onTasksChange(next);
   };
 
   return (
@@ -95,7 +113,9 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
             const goalMilestones = milestones.filter((m) => m.goalId === goal.id).sort((a, b) => a.order - b.order);
             const completedMs = goalMilestones.filter((m) => m.completed).length;
             const isExpanded = expandedGoalId === goal.id;
-            const goalTaskCount = tasks.filter((t) => t.goalId === goal.id && !t.completed).length;
+            const goalTasks = tasks.filter((t) => t.goalId === goal.id && !t.completed);
+            const inactiveTasks = goalTasks.filter((t) => !t.active);
+            const activeTasks = goalTasks.filter((t) => t.active);
 
             return (
               <div key={goal.id} className="bg-card border border-card rounded-2xl p-4 space-y-3">
@@ -111,8 +131,8 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
                       {goalMilestones.length > 0 && (
                         <span className="text-xs text-emerald-500">{completedMs}/{goalMilestones.length}</span>
                       )}
-                      {goalTaskCount > 0 && (
-                        <span className="text-xs text-muted">{goalTaskCount} {t("tabs.tasks", locale)}</span>
+                      {goalTasks.length > 0 && (
+                        <span className="text-xs text-muted">{tFormat("goals.taskCount", locale, goalTasks.length)}</span>
                       )}
                     </div>
                     {goalMilestones.length > 0 && (
@@ -122,65 +142,86 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
                       </div>
                     )}
                   </div>
+                  <span className="text-xs text-muted mt-1">{isExpanded ? "▲" : "▼"}</span>
                 </div>
 
-                {/* マイルストーン（展開時） */}
+                {/* 展開時 */}
                 {isExpanded && (
-                  <div className="space-y-3 animate-fade-in">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-muted">{t("goals.milestones", locale)}</h4>
-                      <button onClick={() => setAddingMilestoneGoalId(goal.id)}
-                        className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">
-                        {t("goals.addMilestone", locale)}
-                      </button>
-                    </div>
+                  <div className="space-y-4 animate-fade-in">
+                    {/* マイルストーン */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-muted">{t("goals.milestones", locale)}</h4>
+                        <button onClick={() => setAddingMilestoneGoalId(goal.id)}
+                          className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">
+                          {t("goals.addMilestone", locale)}
+                        </button>
+                      </div>
 
-                    {goalMilestones.map((ms) => {
-                      const msTasks = tasks.filter((t) => t.milestoneId === ms.id && !t.completed);
-                      return (
-                        <div key={ms.id} className="space-y-1.5">
-                          <div className="flex items-center gap-3 pl-1">
-                            <button onClick={() => handleToggleMilestone(ms.id)} className="shrink-0">
-                              {ms.completed ? (
-                                <CheckCircleIcon size={18} className="text-emerald-500" />
-                              ) : (
-                                <CircleIcon size={18} className="text-muted hover:text-emerald-500" />
-                              )}
-                            </button>
-                            <p className={`text-sm flex-1 ${ms.completed ? "line-through text-muted" : ""}`}>{ms.title}</p>
-                            <span className="text-[10px] text-muted tabular-nums">{ms.dueDate.slice(5)}</span>
-                            {/* タスク追加ボタン */}
-                            {!ms.completed && (
-                              <button onClick={() => setAddingTaskFor({ goalId: goal.id, milestoneId: ms.id })}
-                                className="text-[10px] text-emerald-500 hover:text-emerald-400 transition-colors shrink-0">
-                                {t("goals.addTask", locale)}
+                      {goalMilestones.map((ms) => {
+                        const msTasks = tasks.filter((t) => t.milestoneId === ms.id && !t.completed);
+                        return (
+                          <div key={ms.id} className="space-y-1.5">
+                            <div className="flex items-center gap-3 pl-1">
+                              <button onClick={() => handleToggleMilestone(ms.id)} className="shrink-0">
+                                {ms.completed ? (
+                                  <CheckCircleIcon size={18} className="text-emerald-500" />
+                                ) : (
+                                  <CircleIcon size={18} className="text-muted hover:text-emerald-500" />
+                                )}
                               </button>
+                              <p className={`text-sm flex-1 ${ms.completed ? "line-through text-muted" : ""}`}>{ms.title}</p>
+                              <span className="text-[10px] text-muted tabular-nums">{ms.dueDate.slice(5)}</span>
+                              {!ms.completed && (
+                                <button onClick={() => setAddingTaskFor({ goalId: goal.id, milestoneId: ms.id })}
+                                  className="text-[10px] text-emerald-500 hover:text-emerald-400 transition-colors shrink-0">
+                                  {t("goals.addTask", locale)}
+                                </button>
+                              )}
+                            </div>
+                            {msTasks.length > 0 && (
+                              <div className="pl-8 space-y-1">
+                                {msTasks.map((task) => (
+                                  <GoalTaskRow key={task.id} task={task} locale={locale}
+                                    onMoveToTasks={() => handleMoveToTasks([task.id])}
+                                    onRemoveFromTasks={() => handleRemoveFromTasks(task.id)} />
+                                ))}
+                              </div>
+                            )}
+                            {addingTaskFor?.goalId === goal.id && addingTaskFor?.milestoneId === ms.id && (
+                              <div className="pl-8">
+                                <QuickAddTask locale={locale}
+                                  onAdd={(title) => handleQuickAddTask(goal.id, ms.id, title)}
+                                  onCancel={() => setAddingTaskFor(null)} />
+                              </div>
                             )}
                           </div>
-                          {/* マイルストーン配下のタスク数 */}
-                          {msTasks.length > 0 && (
-                            <p className="text-[10px] text-muted pl-8">{msTasks.length} {t("tabs.tasks", locale)}</p>
-                          )}
-                          {/* インラインタスク追加 */}
-                          {addingTaskFor?.goalId === goal.id && addingTaskFor?.milestoneId === ms.id && (
-                            <div className="pl-8">
-                              <QuickAddTask locale={locale}
-                                onAdd={(title) => handleQuickAddTask(goal.id, ms.id, title)}
-                                onCancel={() => setAddingTaskFor(null)} />
-                            </div>
-                          )}
+                        );
+                      })}
+
+                      {addingMilestoneGoalId === goal.id && (
+                        <AddMilestoneInline locale={locale} goalDeadline={goal.deadline}
+                          onAdd={(title, dueDate) => handleAddMilestone(goal.id, title, dueDate)}
+                          onCancel={() => setAddingMilestoneGoalId(null)} />
+                      )}
+                    </div>
+
+                    {/* マイルストーンなしタスク */}
+                    {(() => {
+                      const noMsTasks = goalTasks.filter((t) => !t.milestoneId);
+                      return noMsTasks.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-bold text-muted pl-1">{t("tasks.noMilestone", locale)}</p>
+                          {noMsTasks.map((task) => (
+                            <GoalTaskRow key={task.id} task={task} locale={locale}
+                              onMoveToTasks={() => handleMoveToTasks([task.id])}
+                              onRemoveFromTasks={() => handleRemoveFromTasks(task.id)} />
+                          ))}
                         </div>
                       );
-                    })}
+                    })()}
 
-                    {/* マイルストーン追加（インライン） */}
-                    {addingMilestoneGoalId === goal.id && (
-                      <AddMilestoneInline locale={locale} goalDeadline={goal.deadline}
-                        onAdd={(title, dueDate) => handleAddMilestone(goal.id, title, dueDate)}
-                        onCancel={() => setAddingMilestoneGoalId(null)} />
-                    )}
-
-                    {/* 目標直下タスク追加（マイルストーンなし） */}
+                    {/* タスク追加（マイルストーンなし） */}
                     <button onClick={() => setAddingTaskFor({ goalId: goal.id, milestoneId: undefined })}
                       className="text-xs text-muted hover:text-emerald-500 transition-colors pl-1">
                       {t("goals.addTask", locale)} ({t("tasks.noMilestone", locale)})
@@ -189,6 +230,14 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
                       <QuickAddTask locale={locale}
                         onAdd={(title) => handleQuickAddTask(goal.id, undefined, title)}
                         onCancel={() => setAddingTaskFor(null)} />
+                    )}
+
+                    {/* 一括移行ボタン */}
+                    {inactiveTasks.length > 0 && (
+                      <button onClick={() => handleMoveToTasks(inactiveTasks.map((t) => t.id))}
+                        className="w-full py-2 rounded-xl text-xs font-medium bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors">
+                        {t("goals.moveToTasks", locale)} ({inactiveTasks.length})
+                      </button>
                     )}
                   </div>
                 )}
@@ -203,11 +252,35 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
   );
 }
 
+// ===== 目標タスク行（移行ステータス付き） =====
+function GoalTaskRow({ task, locale, onMoveToTasks, onRemoveFromTasks }: {
+  task: Task; locale: Locale;
+  onMoveToTasks: () => void;
+  onRemoveFromTasks: () => void;
+}) {
+  const isActive = task.active === true;
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <span className="text-[10px] text-muted">•</span>
+      <span className="text-xs flex-1 truncate">{task.title}</span>
+      {isActive ? (
+        <button onClick={onRemoveFromTasks}
+          className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors shrink-0">
+          {t("goals.inTasks", locale)}
+        </button>
+      ) : (
+        <button onClick={onMoveToTasks}
+          className="text-[10px] px-2 py-0.5 rounded-full bg-subtle text-muted hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors shrink-0">
+          {t("goals.moveToTasks", locale)}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ===== クイックタスク追加 =====
 function QuickAddTask({ locale, onAdd, onCancel }: {
-  locale: Locale;
-  onAdd: (title: string) => void;
-  onCancel: () => void;
+  locale: Locale; onAdd: (title: string) => void; onCancel: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [composing, setComposing] = useState(false);
@@ -241,10 +314,8 @@ function QuickAddTask({ locale, onAdd, onCancel }: {
 function AddMilestoneInline({
   locale, goalDeadline, onAdd, onCancel,
 }: {
-  locale: Locale;
-  goalDeadline: string;
-  onAdd: (title: string, dueDate: string) => void;
-  onCancel: () => void;
+  locale: Locale; goalDeadline: string;
+  onAdd: (title: string, dueDate: string) => void; onCancel: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");

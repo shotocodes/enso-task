@@ -96,6 +96,10 @@ const translations: Translations = {
   "task.milestone":          { ja: "マイルストーン", en: "Milestone", zh: "里程碑", ko: "마일스톤" },
   "task.milestone.none":     { ja: "なし", en: "None", zh: "无", ko: "없음" },
   "goals.addTask":           { ja: "+ タスク", en: "+ Task", zh: "+ 任务", ko: "+ 작업" },
+  "goals.moveToTasks":       { ja: "タスクに移行", en: "Move to Tasks", zh: "移至任务", ko: "작업으로 이동" },
+  "goals.taskCount":         { ja: "{0}件のタスク", en: "{0} tasks", zh: "{0}个任务", ko: "{0}개 작업" },
+  "goals.selectTasks":       { ja: "移行するタスクを選択", en: "Select tasks to move", zh: "选择要移动的任务", ko: "이동할 작업 선택" },
+  "goals.inTasks":           { ja: "移行済み", en: "Active", zh: "已移动", ko: "이동됨" },
 
   // Modal
   "modal.confirm": { ja: "確認", en: "Confirm", zh: "确认", ko: "확인" },

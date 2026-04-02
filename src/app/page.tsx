@@ -109,7 +109,7 @@ export default function Page() {
         )}
         {activeTab === "goals" && (
           <GoalsTab locale={locale} milestones={milestones} onMilestonesChange={handleMilestonesChange}
-            tasks={tasks} onTaskAdd={handleTaskAdd} />
+            tasks={tasks} onTaskAdd={handleTaskAdd} onTasksChange={handleTasksChange} />
         )}
         {activeTab === "settings" && (
           <SettingsTab locale={locale} onLocaleChange={handleLocaleChange} theme={theme} onThemeChange={handleThemeChange} onClearData={handleClearData} />

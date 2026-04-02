@@ -15,8 +15,10 @@ interface TasksTabProps {
   onTasksChange: (tasks: Task[]) => void;
 }
 
-function getTodayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+// activeなタスクかどうか判定（goalIdなし=常にactive、goalIdあり=active===trueのみ）
+function isActiveTask(task: Task): boolean {
+  if (!task.goalId) return true;
+  return task.active === true;
 }
 
 export default function TasksTab({ locale, tasks, milestones, goals, onTasksChange }: TasksTabProps) {
@@ -25,68 +27,43 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [collapsedGoals, setCollapsedGoals] = useState<Set<string>>(new Set());
-  const [collapsedMilestones, setCollapsedMilestones] = useState<Set<string>>(new Set());
 
+  // activeタスクのみ表示
   const activeTasks = useMemo(() =>
-    tasks.filter((t) => !t.completed).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    tasks.filter((t) => !t.completed && isActiveTask(t)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [tasks]
   );
-  const completedTasks = useMemo(() => tasks.filter((t) => t.completed), [tasks]);
+  const completedTasks = useMemo(() =>
+    tasks.filter((t) => t.completed && isActiveTask(t)),
+    [tasks]
+  );
   const completedCount = completedTasks.length;
-  const totalCount = tasks.length;
+  const totalCount = activeTasks.length + completedCount;
 
-  // --- グルーピング ---
+  // --- 目標別グルーピング（activeタスクのみ） ---
   const grouped = useMemo(() => {
-    type GoalGroup = {
-      goal: Goal | null; // null = 未分類
-      milestoneGroups: { milestone: Milestone | null; tasks: Task[] }[];
-    };
+    const goalTasks = new Map<string, Task[]>();
+    const uncategorized: Task[] = [];
 
-    const goalMap = new Map<string, GoalGroup>();
-
-    // 目標ありのタスクをグルーピング
     for (const task of activeTasks) {
-      if (!task.goalId) continue;
-      if (!goalMap.has(task.goalId)) {
-        const goal = goals.find((g) => g.id === task.goalId) ?? null;
-        goalMap.set(task.goalId, { goal, milestoneGroups: [] });
+      if (task.goalId) {
+        if (!goalTasks.has(task.goalId)) goalTasks.set(task.goalId, []);
+        goalTasks.get(task.goalId)!.push(task);
+      } else {
+        uncategorized.push(task);
       }
-      const group = goalMap.get(task.goalId)!;
-      const msKey = task.milestoneId ?? "__none__";
-      let msGroup = group.milestoneGroups.find((mg) =>
-        task.milestoneId ? mg.milestone?.id === task.milestoneId : mg.milestone === null
-      );
-      if (!msGroup) {
-        const ms = task.milestoneId ? milestones.find((m) => m.id === task.milestoneId) ?? null : null;
-        msGroup = { milestone: ms, tasks: [] };
-        group.milestoneGroups.push(msGroup);
-      }
-      msGroup.tasks.push(task);
     }
 
-    // 未分類タスク
-    const uncategorized = activeTasks.filter((t) => !t.goalId);
-
-    // goalMapを配列化（目標の作成日順）
-    const goalGroups = Array.from(goalMap.values()).sort((a, b) => {
-      const aTime = a.goal?.createdAt ?? "";
-      const bTime = b.goal?.createdAt ?? "";
-      return aTime.localeCompare(bTime);
-    });
+    const goalGroups = Array.from(goalTasks.entries()).map(([goalId, tasks]) => ({
+      goal: goals.find((g) => g.id === goalId),
+      tasks,
+    }));
 
     return { goalGroups, uncategorized };
-  }, [activeTasks, goals, milestones]);
+  }, [activeTasks, goals]);
 
   const toggleGoal = (id: string) => {
     setCollapsedGoals((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleMilestone = (id: string) => {
-    setCollapsedMilestones((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -116,11 +93,11 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
     setEditTask(null);
   };
 
-  const handleMoveUp = (id: string) => {
-    const idx = activeTasks.findIndex((t) => t.id === id);
+  const handleMoveUp = (id: string, list: Task[]) => {
+    const idx = list.findIndex((t) => t.id === id);
     if (idx <= 0) return;
-    const above = activeTasks[idx - 1];
-    const current = activeTasks[idx];
+    const above = list[idx - 1];
+    const current = list[idx];
     const next = tasks.map((t) => {
       if (t.id === current.id) return { ...t, order: above.order ?? 0 };
       if (t.id === above.id) return { ...t, order: current.order ?? 0 };
@@ -129,11 +106,11 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
     onTasksChange(next);
   };
 
-  const handleMoveDown = (id: string) => {
-    const idx = activeTasks.findIndex((t) => t.id === id);
-    if (idx < 0 || idx >= activeTasks.length - 1) return;
-    const below = activeTasks[idx + 1];
-    const current = activeTasks[idx];
+  const handleMoveDown = (id: string, list: Task[]) => {
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx < 0 || idx >= list.length - 1) return;
+    const below = list[idx + 1];
+    const current = list[idx];
     const next = tasks.map((t) => {
       if (t.id === current.id) return { ...t, order: below.order ?? 0 };
       if (t.id === below.id) return { ...t, order: current.order ?? 0 };
@@ -147,7 +124,18 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
     setDeleteId(null);
   };
 
-  const hasGroups = grouped.goalGroups.length > 0;
+  const hasGoalGroups = grouped.goalGroups.length > 0;
+
+  const renderTaskList = (list: Task[]) => (
+    <div className="space-y-2">
+      {list.map((task, idx) => (
+        <TaskCard key={task.id} task={task} locale={locale}
+          onToggle={handleToggle} onEdit={setEditTask} onDelete={setDeleteId}
+          onMoveUp={idx > 0 ? () => handleMoveUp(task.id, list) : undefined}
+          onMoveDown={idx < list.length - 1 ? () => handleMoveDown(task.id, list) : undefined} />
+      ))}
+    </div>
+  );
 
   return (
     <div className="animate-tab-enter space-y-5">
@@ -170,81 +158,33 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
         </div>
       )}
 
-      {/* 目標別グルーピング */}
-      {hasGroups && (
-        <div className="space-y-4">
-          {grouped.goalGroups.map((gg) => {
-            const goalId = gg.goal?.id ?? "unknown";
-            const isCollapsed = collapsedGoals.has(goalId);
-            const taskCount = gg.milestoneGroups.reduce((sum, mg) => sum + mg.tasks.length, 0);
-
-            return (
-              <div key={goalId} className="space-y-2">
-                {/* Goal ヘッダー */}
-                <button onClick={() => toggleGoal(goalId)}
-                  className="flex items-center gap-2 w-full text-left group">
-                  <TargetIcon size={16} className="text-emerald-500 shrink-0" />
-                  <span className="text-sm font-bold flex-1 truncate">{gg.goal?.title ?? goalId}</span>
-                  <span className="text-[10px] text-muted tabular-nums">{taskCount}</span>
-                  <span className="text-[10px] text-muted">{isCollapsed ? "▼" : "▲"}</span>
-                </button>
-
-                {!isCollapsed && (
-                  <div className="space-y-3 pl-2 border-l-2 border-emerald-500/20">
-                    {gg.milestoneGroups.map((mg) => {
-                      const msId = mg.milestone?.id ?? "__none__";
-                      const msCollapsed = collapsedMilestones.has(msId);
-
-                      return (
-                        <div key={msId} className="space-y-1.5">
-                          {/* Milestone ヘッダー（nullの場合は「マイルストーンなし」） */}
-                          <button onClick={() => toggleMilestone(msId)}
-                            className="flex items-center gap-2 w-full text-left pl-2">
-                            <span className="text-[10px] text-muted">{mg.milestone ? "◆" : "○"}</span>
-                            <span className="text-xs font-medium text-muted flex-1 truncate">
-                              {mg.milestone?.title ?? t("tasks.noMilestone", locale)}
-                            </span>
-                            <span className="text-[10px] text-muted tabular-nums">{mg.tasks.length}</span>
-                            <span className="text-[10px] text-muted">{msCollapsed ? "▼" : "▲"}</span>
-                          </button>
-
-                          {!msCollapsed && (
-                            <div className="space-y-1.5 pl-2">
-                              {mg.tasks.map((task, idx) => (
-                                <TaskCard key={task.id} task={task} locale={locale}
-                                  onToggle={handleToggle} onEdit={setEditTask} onDelete={setDeleteId}
-                                  onMoveUp={idx > 0 ? () => handleMoveUp(task.id) : undefined}
-                                  onMoveDown={idx < mg.tasks.length - 1 ? () => handleMoveDown(task.id) : undefined} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* 目標別グループ */}
+      {hasGoalGroups && grouped.goalGroups.map(({ goal, tasks: goalTasks }) => {
+        const goalId = goal?.id ?? "unknown";
+        const isCollapsed = collapsedGoals.has(goalId);
+        return (
+          <div key={goalId} className="space-y-2">
+            <button onClick={() => toggleGoal(goalId)} className="flex items-center gap-2 w-full text-left">
+              <TargetIcon size={16} className="text-emerald-500 shrink-0" />
+              <span className="text-xs font-bold flex-1 truncate">{goal?.title ?? goalId}</span>
+              <span className="text-[10px] text-muted tabular-nums">{goalTasks.length}</span>
+              <span className="text-[10px] text-muted">{isCollapsed ? "▼" : "▲"}</span>
+            </button>
+            {!isCollapsed && renderTaskList(goalTasks)}
+          </div>
+        );
+      })}
 
       {/* 未分類タスク */}
       {grouped.uncategorized.length > 0 && (
         <div className="space-y-2">
-          {hasGroups && (
-            <p className="text-xs font-bold text-muted">{t("tasks.uncategorized", locale)}</p>
-          )}
-          {grouped.uncategorized.map((task, idx) => (
-            <TaskCard key={task.id} task={task} locale={locale}
-              onToggle={handleToggle} onEdit={setEditTask} onDelete={setDeleteId}
-              onMoveUp={idx > 0 ? () => handleMoveUp(task.id) : undefined}
-              onMoveDown={idx < grouped.uncategorized.length - 1 ? () => handleMoveDown(task.id) : undefined} />
-          ))}
-          {activeTasks.length > 5 && (
-            <p className="text-center text-[10px] text-muted opacity-40">TOP 5 → ENSO FOCUS</p>
-          )}
+          {hasGoalGroups && <p className="text-xs font-bold text-muted">{t("tasks.uncategorized", locale)}</p>}
+          {renderTaskList(grouped.uncategorized)}
         </div>
+      )}
+
+      {activeTasks.length > 5 && (
+        <p className="text-center text-[10px] text-muted opacity-40">TOP 5 → ENSO FOCUS</p>
       )}
 
       {/* 空状態 */}
@@ -297,13 +237,9 @@ export default function TasksTab({ locale, tasks, milestones, goals, onTasksChan
 function TaskCard({
   task, locale, onToggle, onEdit, onDelete, onMoveUp, onMoveDown,
 }: {
-  task: Task;
-  locale: Locale;
-  onToggle: (id: string) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
+  task: Task; locale: Locale;
+  onToggle: (id: string) => void; onEdit: (task: Task) => void; onDelete: (id: string) => void;
+  onMoveUp?: () => void; onMoveDown?: () => void;
 }) {
   return (
     <div className={`bg-card border border-card rounded-xl p-3 flex items-center gap-2 ${task.completed ? "opacity-50" : ""}`}>
@@ -333,36 +269,21 @@ function TaskCard({
   );
 }
 
-// ===== タスク追加/編集モーダル =====
+// ===== タスク追加/編集モーダル（タスクタブからの追加はactive=true） =====
 function TaskModal({
   locale, goals, milestones, initial, onSave, onClose,
 }: {
-  locale: Locale;
-  goals: Goal[];
-  milestones: Milestone[];
-  initial?: Task;
-  onSave: (task: Task) => void;
-  onClose: () => void;
+  locale: Locale; goals: Goal[]; milestones: Milestone[];
+  initial?: Task; onSave: (task: Task) => void; onClose: () => void;
 }) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
-  const [goalId, setGoalId] = useState<string>(initial?.goalId ?? "");
-  const [milestoneId, setMilestoneId] = useState<string>(initial?.milestoneId ?? "");
   const [composing, setComposing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 300); }, []);
-
-  const activeGoals = goals.filter((g) => !g.achievedAt);
-  const goalMilestones = goalId ? milestones.filter((m) => m.goalId === goalId) : [];
-
-  // goalが変更されたらmilestoneをリセット
-  const handleGoalChange = (newGoalId: string) => {
-    setGoalId(newGoalId);
-    setMilestoneId("");
-  };
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -372,8 +293,9 @@ function TaskModal({
       title: title.trim(),
       priority,
       dueDate: dueDate || undefined,
-      goalId: goalId || undefined,
-      milestoneId: milestoneId || undefined,
+      goalId: initial?.goalId,
+      milestoneId: initial?.milestoneId,
+      active: initial?.active ?? true, // タスクタブから追加 = 常にactive
       completed: initial?.completed ?? false,
       completedAt: initial?.completedAt,
       order: initial?.order ?? Date.now(),
@@ -386,10 +308,9 @@ function TaskModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-      <div className="w-full max-w-sm bg-modal rounded-2xl p-5 space-y-3 overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm bg-modal rounded-2xl p-5 space-y-3 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-sm font-bold text-center">{t(isEdit ? "task.edit.title" : "task.add.title", locale)}</h3>
 
-        {/* タイトル */}
         <div>
           <label className="text-xs text-muted block mb-1">{t("task.title", locale)}</label>
           <input ref={inputRef} type="text" value={title}
@@ -402,7 +323,6 @@ function TaskModal({
             style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text)" }} />
         </div>
 
-        {/* 優先度 */}
         <div>
           <label className="text-xs text-muted block mb-1">{t("task.priority", locale)}</label>
           <div className="flex gap-2">
@@ -416,37 +336,6 @@ function TaskModal({
           </div>
         </div>
 
-        {/* 目標 */}
-        {activeGoals.length > 0 && (
-          <div>
-            <label className="text-xs text-muted block mb-1">{t("task.goal", locale)}</label>
-            <select value={goalId} onChange={(e) => handleGoalChange(e.target.value)}
-              className="w-full bg-input border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none"
-              style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text)" }}>
-              <option value="">{t("task.goal.none", locale)}</option>
-              {activeGoals.map((g) => (
-                <option key={g.id} value={g.id}>{g.title}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* マイルストーン */}
-        {goalMilestones.length > 0 && (
-          <div>
-            <label className="text-xs text-muted block mb-1">{t("task.milestone", locale)}</label>
-            <select value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}
-              className="w-full bg-input border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none"
-              style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text)" }}>
-              <option value="">{t("task.milestone.none", locale)}</option>
-              {goalMilestones.map((m) => (
-                <option key={m.id} value={m.id}>{m.title}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* 期日 */}
         <div>
           <label className="text-xs text-muted block mb-1">{t("task.dueDate", locale)}</label>
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
@@ -454,7 +343,6 @@ function TaskModal({
             style={{ background: "var(--input-bg)", borderColor: "var(--input-border)", color: "var(--text)" }} />
         </div>
 
-        {/* ボタン */}
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm bg-subtle text-muted hover:opacity-80">{t("modal.cancel", locale)}</button>
           <button onClick={handleSave} disabled={!title.trim()}

@@ -17,6 +17,7 @@ export interface Task {
   completed: boolean;
   completedAt?: string;     // ISO 8601
   order: number;            // 手動並び順（小さい方が上）
+  active?: boolean;         // true=タスクタブに表示 / false=目標タブのみ（goalIdなしは常にactive扱い）
   createdAt: string;
   updatedAt: string;
 }
