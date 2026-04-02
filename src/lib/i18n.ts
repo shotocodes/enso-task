@@ -100,6 +100,14 @@ const translations: Translations = {
   "goals.taskCount":         { ja: "{0}件のタスク", en: "{0} tasks", zh: "{0}个任务", ko: "{0}개 작업" },
   "goals.selectTasks":       { ja: "移行するタスクを選択", en: "Select tasks to move", zh: "选择要移动的任务", ko: "이동할 작업 선택" },
   "goals.inTasks":           { ja: "移行済み", en: "Active", zh: "已移动", ko: "이동됨" },
+  "goals.editMilestone":     { ja: "編集", en: "Edit", zh: "编辑", ko: "편집" },
+  "goals.deleteMilestone":   { ja: "削除", en: "Delete", zh: "删除", ko: "삭제" },
+  "goals.deleteMilestoneConfirm": { ja: "このマイルストーンを削除しますか？紐づくタスクも削除されます。", en: "Delete this milestone? Related tasks will also be deleted.", zh: "删除此里程碑？相关任务也将被删除。", ko: "이 마일스톤을 삭제하시겠습니까? 관련 작업도 삭제됩니다." },
+  "goals.aiGenerate":        { ja: "AIで分解", en: "AI Breakdown", zh: "AI分解", ko: "AI 분해" },
+  "goals.aiGenerating":      { ja: "AI生成中...", en: "Generating...", zh: "AI生成中...", ko: "AI 생성 중..." },
+  "goals.aiError":           { ja: "生成に失敗しました", en: "Generation failed", zh: "生成失败", ko: "생성 실패" },
+  "goals.aiConfirm":         { ja: "この内容で追加しますか？", en: "Add these items?", zh: "添加这些内容？", ko: "이 내용을 추가하시겠습니까?" },
+  "goals.aiAdd":             { ja: "追加する", en: "Add All", zh: "全部添加", ko: "모두 추가" },
 
   // Modal
   "modal.confirm": { ja: "確認", en: "Confirm", zh: "确认", ko: "확인" },
