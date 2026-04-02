@@ -74,6 +74,8 @@ const translations: Translations = {
   // Menu
   "menu.title":            { ja: "メニュー", en: "Menu", zh: "菜单", ko: "메뉴" },
   "menu.ensoApps":         { ja: "ENSO Apps", en: "ENSO Apps", zh: "ENSO Apps", ko: "ENSO Apps" },
+  "menu.ensoDashboard":    { ja: "ENSO Dashboard", en: "ENSO Dashboard", zh: "ENSO Dashboard", ko: "ENSO Dashboard" },
+  "menu.ensoDashboardDesc":{ ja: "人生をより意識的に生きる", en: "Live more consciously", zh: "更有意识地生活", ko: "더 의식적으로 살다" },
   "menu.ensoTimer":        { ja: "ENSO TIMER", en: "ENSO TIMER", zh: "ENSO TIMER", ko: "ENSO TIMER" },
   "menu.ensoTimerDesc":    { ja: "人生という時間を可視化する", en: "Visualize life's time", zh: "将人生时间可视化", ko: "인생의 시간을 시각화하다" },
   "menu.ensoFocus":        { ja: "ENSO FOCUS", en: "ENSO FOCUS", zh: "ENSO FOCUS", ko: "ENSO FOCUS" },
