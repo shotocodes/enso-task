@@ -42,6 +42,67 @@ export const STORAGE_KEYS = {
   LOCALE:     "locale",
 } as const;
 
+// ===== JOURNAL連携（タスク完了→日記に自動記録） =====
+
+interface JournalEntry {
+  date: string;
+  mood?: number;
+  comment?: string;
+  notes: string[];
+  aiSummary?: string;
+  manualEntries: { id: string; time: string; text: string; icon: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+const JOURNAL_KEY = "enso-journal-entries";
+
+/** タスク完了をJOURNALに記録する */
+export function recordTaskToJournal(taskTitle: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    const raw = localStorage.getItem(JOURNAL_KEY);
+    const entries: JournalEntry[] = raw ? JSON.parse(raw) : [];
+
+    let todayEntry = entries.find((e) => e.date === todayStr);
+    if (todayEntry) {
+      // 既存の今日のエントリーに追加
+      todayEntry.manualEntries.push({
+        id: Date.now().toString(),
+        time: timeStr,
+        text: taskTitle,
+        icon: "done",
+      });
+      todayEntry.updatedAt = now.toISOString();
+    } else {
+      // 今日のエントリーを新規作成
+      todayEntry = {
+        date: todayStr,
+        notes: [],
+        manualEntries: [{
+          id: Date.now().toString(),
+          time: timeStr,
+          text: taskTitle,
+          icon: "done",
+        }],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      };
+      entries.unshift(todayEntry);
+    }
+
+    localStorage.setItem(JOURNAL_KEY, JSON.stringify(entries));
+  } catch (e) {
+    console.error("[enso-task] Failed to record to journal:", e);
+  }
+}
+
+// ===== データエクスポート/インポート =====
+
 export function exportData(): string {
   const tasks = storage.get<Task[]>(STORAGE_KEYS.TASKS) ?? [];
   const milestones = storage.get<Milestone[]>(STORAGE_KEYS.MILESTONES) ?? [];

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { type Locale, t, tFormat } from "@/lib/i18n";
 import type { Task, Priority } from "@/types";
 import { PRIORITY_COLORS, PRIORITY_BG } from "@/types";
+import { recordTaskToJournal } from "@/lib/storage";
 import { TrashIcon, PenIcon, CheckCircleIcon, CircleIcon, ChecklistIcon } from "@/components/Icons";
 
 interface TasksTabProps {
@@ -31,12 +32,20 @@ export default function TasksTab({ locale, tasks, onTasksChange }: TasksTabProps
   const totalCount = tasks.length;
 
   const handleToggle = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    const isCompleting = task && !task.completed;
+
     const next = tasks.map((t) =>
       t.id === id
         ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined, updatedAt: new Date().toISOString() }
         : t
     );
     onTasksChange(next);
+
+    // タスク完了時 → JOURNALに自動記録
+    if (isCompleting && task) {
+      recordTaskToJournal(task.title);
+    }
   };
 
   const handleAdd = (task: Task) => {
