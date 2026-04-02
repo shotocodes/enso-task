@@ -211,7 +211,7 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
                         <p className="text-xs font-bold text-purple-400">{t("goals.aiConfirm", locale)}</p>
                         {aiResult.data.milestones.map((ms, i) => (
                           <div key={i} className="space-y-1">
-                            <p className="text-xs font-medium">◆ {ms.title} <span className="text-muted">({ms.dueDate.slice(5)})</span></p>
+                            <p className="text-xs font-medium">◆ {ms.title} <span className="text-muted">({ms.dueDate.replace(/-/g, "/")})</span></p>
                             {ms.tasks.map((task, j) => (
                               <p key={j} className="text-[10px] text-muted pl-3">
                                 • {task.title} <span className={PRIORITY_COLORS[task.priority]}>({t(`task.priority.${task.priority}`, locale)})</span>
@@ -247,7 +247,7 @@ export default function GoalsTab({ locale, milestones, onMilestonesChange, tasks
                                 {ms.completed ? <CheckCircleIcon size={18} className="text-emerald-500" /> : <CircleIcon size={18} className="text-muted hover:text-emerald-500" />}
                               </button>
                               <p className={`text-sm flex-1 ${ms.completed ? "line-through text-muted" : ""}`}>{ms.title}</p>
-                              <span className="text-[10px] text-muted tabular-nums">{ms.dueDate.slice(5)}</span>
+                              <span className="text-[10px] text-muted tabular-nums">{ms.dueDate.replace(/-/g, "/")}</span>
                               {/* 編集・削除 */}
                               <button onClick={() => setEditingMilestone(ms)} className="text-muted hover:text-emerald-500 transition-colors"><PenIcon size={12} /></button>
                               <button onClick={() => setDeleteMilestoneId(ms.id)} className="text-muted hover:text-red-400 transition-colors"><TrashIcon size={12} /></button>
